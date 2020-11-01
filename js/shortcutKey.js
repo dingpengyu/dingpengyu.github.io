@@ -1,109 +1,97 @@
-(function() {
-'use strict';
-    var token = window.location.href.substring(19).split('=');
-$('a.focus, a.next, a.prev').addClass('accesskey-x');
-$('h2 a').addClass('accesskey-x');
-$('li.menu-item a').addClass('accesskey-z');
+(function () {
+  'use strict';
 
-if (token[0] == 'p') {
-$('article div.entry-content').addClass('accesskey-x').attr({'tabindex':'-1'}).focus();
-}
-$('input.search-field').attr({'accesskey':'s'});
-$('#content').attr({'tabindex':'-1'});
-if (window.ActiveXObject || "ActiveXObject" in window){
-$('.accesskey-x').attr({'accesskey':'x'});
-$('.accesskey-z').attr({'accesskey':'z'});
-$('header[role="banner"], nav [role="navigation"]').removeAttr('role');
-$('svg').attr({'focusable':'false'}).removeAttr('aria-hidden role');
-}
+  function isVisible(t) {
+    return !! (!t.hasAttribute('disabled') && t.getAttribute('aria-hidden') !== 'true' && t.offsetParent !== null);
+  }
 
-if(navigator.userAgent.indexOf("Chrome")> -1 || navigator.userAgent.indexOf('Firefox')>= 0) {
-let allElement = [];
-//存储焦点元素的数组下标
-let focusElementIndex;
-
-function shortcutKey(k) {
-if (!k.altKey) {
-return false;
-} else {
-//获取页面所有元素，转成数组
-let all = document.all;
-if (all.length !== allElement.length) {
-allElement = Array.prototype.slice.call(all);
-}
-//获取焦点元素的数组下标
-focusElementIndex = allElement.indexOf(document.activeElement);
-
-accesskey(k);
-}
-}
-document.addEventListener('keydown', function (k) {
-shortcutKey(k);
-}, null);
-
-function previousTarget(target, subscriptArray) {
-for (var i = 0, l = target.length || subscriptArray.length; i < l; i++) {
-if (focusElementIndex > subscriptArray[l - 1] || focusElementIndex <= subscriptArray[0]) {
-target[l - 1].focus();
-break;
-}
-else if (focusElementIndex <= subscriptArray[i]) {
-var xv = target.indexOf(target[i]);
-target[xv - 1].focus();
-break;
-}
-}
-return false;
-}
-
-function nextTarget(target, subscriptArray) {
-for (let i = 0, l = target.length || subscriptArray.length; i < l; i++) {
-if (focusElementIndex < subscriptArray[i]) {
-var xv = target.indexOf(target[i]);
-target[xv].focus();
-break;
-} else if (focusElementIndex < subscriptArray[0] || focusElementIndex >= subscriptArray[l - 1]) {
-target[0].focus();
-break;
-}
-}
-return false;
-}
-
-function accesskey(k) {
-    let Xscript = [];
-    var xAcc = handleKey('accesskey-x', Xscript);
-    let Zscript = [];
-    var zAcc = handleKey('accesskey-z', Zscript);
-
-    if (k.shiftKey && k.altKey && k.keyCode == 88) {
-        previousTarget(xAcc, Xscript);
-    }
-
-    if (k.shiftKey && k.altKey && k.keyCode == 90) {
-        previousTarget(zAcc, Zscript);
-    }
-
-    if (k.shiftKey) return false;
-    if (k.altKey && k.keyCode == 88) {
-        nextTarget(xAcc, Xscript)
-    }
-
-    if (k.altKey && k.keyCode == 90) {
-        nextTarget(zAcc, Zscript)
-    }
-
-}
-
-function handleKey(a,c) {
-    var d = allElement.filter(function (t) {
-        if (t.classList.contains(a)) {
-                c.push(allElement.indexOf(t));
-                return t;
-        }
+  function removeAccesskeyAttribute(selector) {
+    document.querySelectorAll(selector).forEach(function(el) {
+      el.removeAttribute('accesskey');
     });
-return d;
-}
-//end
-}
-})();
+  }
+  function addClass(selector, clsName) {
+    document.querySelectorAll(selector).forEach(function(el) {
+      el.classList.add(clsName);
+    });
+  }
+
+  function gi(i, len, op) {
+    let n = op == '+' ? +1 : -1;
+    i = i + n;
+    if (i >= len) {
+      i = 0;
+    }
+    if (i < 0) {
+      i = len - 1;
+    }
+    return i;
+  }
+
+  function _toFocus(el) {
+    let tagName = el.tagName.toLowerCase();
+    let tagNames = ['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'form', 'img', 'nav', 'header', 'main', 'footer', 'section', 'aside'];
+    if (tagNames.includes(tagName) || (tagName == 'a' && !el.hasAttribute('href'))) {
+      if (!el.hasAttribute('tabindex')) {
+        el.setAttribute('tabindex', '-1');
+      }
+    }
+    el.focus();
+  }
+
+  function toFocus(focusSelector, op) {
+    let els = [...document.body.querySelectorAll('*')];
+    let len = els.length;
+    let aeIndex = Math.max(0, els.indexOf(document.activeElement));
+    let i = aeIndex == 0 ? 0 : gi(aeIndex, len, op);
+    do {
+      if (els[i].matches(focusSelector) && isVisible(els[i])) {
+        _toFocus(els[i]);
+        break;
+      }
+      i = gi(i, len, op);
+    } while ( i != aeIndex );
+  }
+
+  function nextFocus(selector) {
+    toFocus(selector, '+');
+  }
+
+  function previousFocus(selector) {
+    toFocus(selector, '-');
+  }
+
+  function isIE() {
+    return ( !! window.ActiveXObject || "ActiveXObject" in window);
+  }
+
+  if (!isIE()) {
+    let keys = [];
+    document.querySelectorAll('[accesskey]').forEach(function(el) {
+      let key = el.getAttribute('accesskey');
+      if (!keys.includes(key)) {
+        keys.push(key);
+      }
+    });
+    keys.forEach(function(key) {
+      addClass('[accesskey="' + key + '"]', 'accesskey-' + key);
+      removeAccesskeyAttribute('[accesskey="' + key + '"]');
+    });
+
+    document.addEventListener('keydown',
+    function(e) {
+      keys.forEach(function(key) {
+        let keyCode = key.toUpperCase().charCodeAt();
+        if (e.altKey && e.shiftKey && e.keyCode == keyCode) {
+          e.preventDefault();
+          previousFocus('.accesskey-' + key);
+        } else if (e.altKey && e.keyCode == keyCode) {
+          e.preventDefault();
+          nextFocus('.accesskey-' + key);
+        }
+      });
+    },
+    null);
+  }
+
+}());
